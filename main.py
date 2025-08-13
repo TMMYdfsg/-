@@ -815,8 +815,8 @@ class ShopGameApp(App):
 
     def _load_sounds(self):
         self.sounds = {
-            "morning": self._load("assets/audio/ニワトリの鳴き声1.mp3"),
-            "night": self._load("assets/audio/いびき1.mp3"),
+            "morning": self._load("assets/audio/ニワトリ.mp3"),
+            "night": self._load("assets/audio/いびき.mp3"),
         }
 
     def _load(self, rel):

@@ -1191,29 +1191,25 @@ STOCKS = [
 ]
 
 # 禁断市場
-FORBIDDEN_NEWS = [
+FORBIDDEN_STOCKS = [
     {
-        "headline": "宇宙からの謎の信号を受信！",
-        "effect": "stock_up",
-        "target": "シャドウ・コーポレーション",
-        "bonus": 5.0,
-        "description": "シャドウ・コーポレーションの株価が5倍に！",
+        "name": "シャドウ・コーポレーション",
+        "price": 666,
+        "volatility": 0.8,
+        "category": "禁断",
+        "market_cap": 66600,
+        "owner": None,
     },
     {
-        "headline": "古代遺跡で大発見！",
-        "effect": "stock_up",
-        "target": "古代文明の遺産ファンド",
-        "bonus": 10.0,
-        "description": "古代文明の遺産ファンドの価値が10倍に！",
-    },
-    {
-        "headline": "次元の歪みが発生...",
-        "effect": "stock_crash",
-        "target": "all",
-        "bonus": 0.1,
-        "description": "禁断の市場の全銘柄が暴落！",
+        "name": "古代文明の遺産ファンド",
+        "price": 123,
+        "volatility": 0.6,
+        "category": "禁断",
+        "market_cap": 12300,
+        "owner": None,
     },
 ]
+
 FORBIDDEN_NEWS = [
     {
         "headline": "宇宙からの謎の信号を受信！",

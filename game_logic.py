@@ -28,7 +28,7 @@ class Game:
 
     # ---------- init & time ----------
     def ensure_initialized(self):
-        st = self.store.load()
+        st = self.store.get_state()
         if st.get("initialized"):
             return st
         st = {
@@ -56,7 +56,7 @@ class Game:
         # デモ用プレイヤー
         for pn in ["たろう", "はなこ"]:
             st["players"][pn] = self._new_player(pn)
-        self.store.save(st)
+        self.store.update_state(st)
         return st
 
     def _new_player(self, name: str) -> Dict[str, Any]:
@@ -108,7 +108,7 @@ class Game:
         # 税（周期）
         if st["turn"] % TAX_PERIOD == 0:
             self._collect_taxes(st)
-        self.store.save(st)
+        self.store.update_state(st)
 
     # ---------- helpers ----------
     def _log(self, st, msg: str):
@@ -134,7 +134,7 @@ class Game:
         st["banker"]["user"] = user
         st["banker"]["pass_hash"] = hashlib.sha256(new_password.encode("utf-8")).hexdigest()
         self._log(st, f"銀行員パスワードを更新")
-        self.store.save(st)
+        self.store.update_state(st)
 
     # ---------- banker god mode actions ----------
     def banker_adjust_money(self, player: str, delta: int):
@@ -142,14 +142,14 @@ class Game:
         p = st["players"][player]
         p["money"] += int(delta)
         self._log(st, f"[神] {player} の所持金を {delta:+d} 万円")
-        self.store.save(st)
+        self.store.update_state(st)
 
     def banker_adjust_debt(self, player: str, delta: int):
         st = self.ensure_initialized()
         p = st["players"][player]
         p["debt"] = max(0, p["debt"] + int(delta))
         self._log(st, f"[神] {player} の借金を {delta:+d} 万円")
-        self.store.save(st)
+        self.store.update_state(st)
 
     def banker_add_title(self, player: str, title: str):
         st = self.ensure_initialized()
@@ -157,39 +157,39 @@ class Game:
         if title not in p["titles"]:
             p["titles"].append(title)
             self._log(st, f"[神] {player} に称号「{title}」を付与")
-            self.store.save(st)
+            self.store.update_state(st)
 
     def banker_adjust_popularity(self, player: str, delta: int):
         st = self.ensure_initialized()
         p = st["players"][player]
         p["popularity"] += int(delta)
         self._log(st, f"[神] {player} の人気を {delta:+d}")
-        self.store.save(st)
+        self.store.update_state(st)
 
     def banker_set_time(self, tod: str):
         st = self.ensure_initialized()
         st["time_of_day"] = tod
         self._log(st, f"[神] 時間帯を {tod} に変更")
-        self.store.save(st)
+        self.store.update_state(st)
 
     def banker_set_season(self, season: str):
         st = self.ensure_initialized()
         idx = SEASONS.index(season) if season in SEASONS else 0
         st["season_index"] = idx
         self._log(st, f"[神] 季節を {season} に変更")
-        self.store.save(st)
+        self.store.update_state(st)
 
     def banker_set_treasury(self, amount: int):
         st = self.ensure_initialized()
         st["treasury"] = int(amount)
         self._log(st, "[神] 国庫残高を更新")
-        self.store.save(st)
+        self.store.update_state(st)
 
     def banker_toggle_forbidden(self, enable: bool):
         st = self.ensure_initialized()
         st["forbidden_unlocked"] = bool(enable)
         self._log(st, f"[神] 禁断市場を {'解禁' if enable else '封印'}")
-        self.store.save(st)
+        self.store.update_state(st)
 
     def banker_force_news(self, news: Dict[str, Any], forbidden=False):
         st = self.ensure_initialized()
@@ -199,14 +199,14 @@ class Game:
         n["forbidden"] = bool(forbidden)
         target_list.append(n)
         self._log(st, f"[神] ニュース強制: {n.get('headline', n.get('id', 'NEWS'))}")
-        self.store.save(st)
+        self.store.update_state(st)
 
     def banker_force_job(self, player: str, job: str):
         st = self.ensure_initialized()
         p = st["players"][player]
         p["job"] = job
         self._log(st, f"[神] {player} の職業を {job} に変更")
-        self.store.save(st)
+        self.store.update_state(st)
 
     def banker_generation(self, new_generation: Optional[int] = None):
         st = self.ensure_initialized()
@@ -214,28 +214,28 @@ class Game:
         st["turn"] = 1
         st["season_index"] = 0
         self._log(st, "[神] 世代交代を発動")
-        self.store.save(st)
+        self.store.update_state(st)
 
     def banker_imprison(self, player: str, turns: int):
         st = self.ensure_initialized()
         p = st["players"][player]
         p["jailed_until"] = max(p.get("jailed_until", 0), st["turn"] + int(turns))
         self._log(st, f"[神] {player} を {turns} ターン収監")
-        self.store.save(st)
+        self.store.update_state(st)
 
     def banker_release(self, player: str):
         st = self.ensure_initialized()
         p = st["players"][player]
         p["jailed_until"] = 0
         self._log(st, f"[神] {player} を釈放")
-        self.store.save(st)
+        self.store.update_state(st)
 
     def banker_marry(self, a: str, b: str):
         st = self.ensure_initialized()
         if a not in st["players"] or b not in st["players"]:
             return
         self._log(st, f"[神] {a} と {b} を強制的に結婚させました（演出のみ）")
-        self.store.save(st)
+        self.store.update_state(st)
 
     def banker_manage_codes(self, add_code: Optional[str] = None, remove_code: Optional[str] = None):
         st = self.ensure_initialized()
@@ -245,7 +245,7 @@ class Game:
         if remove_code and remove_code in st["secret_codes"]:
             st["secret_codes"].remove(remove_code)
             self._log(st, f"[神] 秘密コード削除: {remove_code}")
-        self.store.save(st)
+        self.store.update_state(st)
 
     # ---------- news & stocks ----------
     def _roll_news(self, st):
@@ -470,7 +470,7 @@ class Game:
             p["stocks"][name] = cur - abs(shares)
             p["money"] += price - fee
             self._log(st, f"{player} が {name} を {abs(shares)} 株売却（手数料{fee}）")
-        self.store.save(st)
+        self.store.update_state(st)
         return True, "OK"
 
     # ---------- forbidden unlock by code ----------
@@ -487,7 +487,7 @@ class Game:
                 for p in st["players"].values():
                     p["money"] += int(g.get("money", 0))
                 self._log(st, f"秘密コード {code} の効果を適用（grant）")
-            self.store.save(st)
+            self.store.update_state(st)
             return True
         return False
 
@@ -520,7 +520,7 @@ class Game:
             p["titles"].append(rank)
             self._log(st, f"{player} の犯罪ランクが {rank} に昇格")
         self._log(st, f"{player} が犯罪行為を実行：{result}")
-        self.store.save(st)
+        self.store.update_state(st)
         return result
 
     def confess(self, player: str) -> str:
@@ -533,7 +533,7 @@ class Game:
                 p["titles"].remove(r)
                 p["crime_count"] = max(0, p["crime_count"] - 1)
                 self._log(st, f"{player} が自首。犯罪ランク {r} を返上")
-                self.store.save(st)
+                self.store.update_state(st)
                 return f"自首しました。{r} を返上"
         return "返上できる犯罪ランクはありません"
 
@@ -555,7 +555,7 @@ class Game:
             p["popularity"] += 1
             msg += "（人気+1）"
         self._log(st, f"[ルーレット] {player}: {msg}")
-        self.store.save(st)
+        self.store.update_state(st)
         return msg
 
 from masters import (STAMP_PER_PRICE, STAMP_TARGET, DEDUCTION_PER_DEPENDENT, RENT_RATE,
@@ -586,7 +586,7 @@ def market_list(self, seller: str, item_name: str, price: int):
         iid = (st["market"][-1]["id"] + 1) if st["market"] else 1
         st["market"].append({"id": iid, "seller": seller, "name": item_name, "price": int(price)})
         self._log(st, f"{seller} が市場に『{item_name}』({price}万)を出品")
-        self.store.save(st)
+        self.store.update_state(st)
         return iid
 
 def market_buy(self, buyer: str, item_id: int):
@@ -614,7 +614,7 @@ def market_buy(self, buyer: str, item_id: int):
         self._log(st, f"{buyer} が『{item['name']}』を {item['price']} 万で購入（スタンプ+{stamps}）")
         # 市場から削除
         st["market"] = [x for x in st["market"] if x["id"] != item["id"]]
-        self.store.save(st)
+        self.store.update_state(st)
         return True, "購入完了"
 
 def exchange_card(self, player: str, reward_name: str) -> str:
@@ -633,7 +633,7 @@ def exchange_card(self, player: str, reward_name: str) -> str:
             # マイルーム用に保持
             p.setdefault("furniture", []).append(rw["value"])
         self._log(st, f"{player} が『{reward_name}』と交換")
-        self.store.save(st)
+        self.store.update_state(st)
         return "交換しました"
 
 # ---------- real estate ----------
@@ -648,7 +648,7 @@ def buy_property(self, player: str, prop_id: int) -> str:
         p["money"] -= int(pr["price"])
         p["properties"].append({"name": pr["name"], "price": pr["price"], "rent": pr["rent"]})
         self._log(st, f"{player} が不動産『{pr['name']}』を購入（{pr['price']}万）")
-        self.store.save(st)
+        self.store.update_state(st)
         return "購入しました"
 
 # ---------- cooking ----------
@@ -664,7 +664,7 @@ def cook(self, player: str, recipe_name: str) -> str:
         delta = min(100 - p["happiness"], len(rc["ingredients"]) * 2)
         p["happiness"] += delta
         self._log(st, f"{player} が料理『{recipe_name}』を作成（幸福+{delta}）")
-        self.store.save(st)
+        self.store.update_state(st)
         return f"美味しくできた！（幸福+{delta}）"
 
 # ---------- collection ----------
@@ -680,7 +680,7 @@ def collect_random(self, player: str, category: str) -> str:
         coll.append(item)
         p["happiness"] = min(100, p["happiness"] + 1)
         self._log(st, f"{player} がコレクション『{category}:{item}』を入手（幸福+1）")
-        self.store.save(st)
+        self.store.update_state(st)
         return f"『{item}』をコレクション！"
 
 # ---------- pets ----------
@@ -694,7 +694,7 @@ def buy_pet(self, player: str, pet_name: str) -> str:
         p["pets"].append(pet_name)
         p["happiness"] = min(100, p["happiness"] + int(pd["happiness_boost"]))
         self._log(st, f"{player} が『{pet_name}』を飼い始めました（幸福+{pd['happiness_boost']}）")
-        self.store.save(st)
+        self.store.update_state(st)
         return "購入しました"
 
 # ---------- npc ----------
@@ -704,7 +704,7 @@ def npc_talk(self, player: str, npc_name: str) -> str:
         if npc_name not in st["npcs"]: return "NPCがいません"
         st["npcs"][npc_name]["affinity"] += 1
         self._log(st, f"{player} が {npc_name} と交流（親交+1）")
-        self.store.save(st)
+        self.store.update_state(st)
         return "仲良くなった！"
 
 # ---------- generation (inherit) ----------
@@ -713,7 +713,7 @@ def add_child(self, player: str, child_name: str, age: int):
         p = st["players"][player]
         p["children"].append({"name": child_name, "age": int(age)})
         self._log(st, f"{player} に子『{child_name}』が追加")
-        self.store.save(st)
+        self.store.update_state(st)
 
 def do_generation_inherit(self, player: str, ratios: List[int]):
         st = self.ensure_initialized()
@@ -735,7 +735,7 @@ def do_generation_inherit(self, player: str, ratios: List[int]):
         # 元プレイヤーは引退（演出のみ・所持金0化）
         p["money"] = 0
         self.banker_generation()
-        self.store.save(st)
+        self.store.update_state(st)
         return "世代交代完了"
 
 # ---- override: apply passives extended with rent ----
@@ -800,7 +800,7 @@ def add_inventory(self, player: str, item: str, qty: int=1):
         inv = p.setdefault("inventory", {})
         inv[item] = int(inv.get(item, 0)) + int(qty)
         self._log(st, f"{player} の在庫『{item}』+{qty}")
-        self.store.save(st)
+        self.store.update_state(st)
 
 def consume_inventory(self, player: str, needed: dict) -> bool:
         """必要材料を在庫から消費。足りなければFalse"""
@@ -814,7 +814,7 @@ def consume_inventory(self, player: str, needed: dict) -> bool:
         # 消費
         for k,v in needed.items():
             inv[k] -= int(v)
-        self.store.save(st)
+        self.store.update_state(st)
         return True
 
 def inventory_text(self, player: str) -> str:
@@ -849,5 +849,5 @@ def npc_special_event(self, player: str, npc_name: str) -> str:
             self.add_inventory(player, name, int(q))
         done.append(key)
         self._log(st, f"{player} が {npc_name} イベント報酬を獲得")
-        self.store.save(st)
+        self.store.update_state(st)
         return ev.get("text","報酬GET")

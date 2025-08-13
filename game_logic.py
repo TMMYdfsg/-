@@ -847,5 +847,7 @@ class Game:
             self.add_inventory(player, name, int(q))
         done.append(key)
         self._log(st, f"{player} が {npc_name} イベント報酬を獲得")
+        
         self.store.save(st)
         return ev.get("text", "報酬GET")
+        main

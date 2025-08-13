@@ -7,14 +7,9 @@ from kivy.metrics import dp
 from kivy.properties import StringProperty, BooleanProperty, ListProperty, NumericProperty
 from kivy.core.audio import SoundLoader
 from kivy.resources import resource_find
-from features.backup_manager import (
-    export_backup,
-    import_backup,
-    quick_export_backup,
-    import_latest_backup,
-)
-from features.roulette import spin_and_apply
-from widgets.animations import ReceiptOverlay, StampCardOverlay
+from backup_manager import (export_backup,quick_export_backup,import_backup,import_latest_backup,)
+from roulette import ROULETTE_TABLE
+from animations import ReceiptOverlay, StampCardOverlay
 from store import StateStore
 from game_logic import Game
 from masters import DAY, NIGHT, SEASONS, NEWS_EVENTS, FORBIDDEN_NEWS

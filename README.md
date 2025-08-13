@@ -10,7 +10,7 @@
 ## 使い方
 1. `buildozer -v android debug` で APK を生成（Mac/Linux）
 2. 初回起動：プレイヤー「たろう/はなこ」が入った状態で開始
-3. 効果音：`assets/audio/ニワトリの鳴き声1.mp3` / `assets/audio/いびき1.mp3` を配置
+3. 効果音：`assets/audio/ニワトリ.mp3` / `assets/audio/いびき.mp3` を配置
 
 ## 神モード（銀行員）
 - 既定ユーザー：`admin` / パスワード：`1234`（初回にアプリから変更推奨）

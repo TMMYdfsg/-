@@ -1,0 +1,534 @@
+#:kivy 2.3.0
+#:import dp kivy.metrics.dp
+
+# 共通のタブテンプレート
+<Tab@MDBoxLayout+MDTabsBase>:
+    orientation: "vertical"
+    padding: dp(8)
+    spacing: dp(8)
+
+<Root@MDBoxLayout>:
+    orientation: "vertical"
+    md_bg_color: 1, 1, 1, 1
+
+    # ── ツールバー（右上：保存/復元/ルーレット） ──
+    MDToolbar:
+        id: toolbar
+        title: "リアルお店屋さんごっこ（オフライン）"
+        elevation: 4
+        right_action_items: [
+            ["content-save", lambda x: app.backup_export()],
+            ["backup-restore", lambda x: app.backup_import()],
+            ["dice-multiple", lambda x: app.show_roulette_dialog()]
+        ]
+
+    # ── ステータス行（ターン / 昼夜 / 季節 / プレイヤー選択） ──
+    MDBoxLayout:
+        adaptive_height: True
+        padding: dp(8)
+        spacing: dp(8)
+
+        MDLabel:
+            id: turn_label
+            text: "ターン: 1"
+            halign: "left"
+        MDLabel:
+            id: time_label
+            text: "時間帯: 昼 / 季節: 春"
+            halign: "left"
+
+        # プレイヤー選択（アプリ側で values を埋める）
+        MDSpinner:
+            id: player_spinner
+            size_hint_x: None
+            width: dp(220)
+            text: "プレイヤー選択"
+            values: []
+            on_text: app.select_player(self.text) if self.text else None
+
+    # ── タブ群 ──
+    MDTabs:
+        id: tabs
+        on_tab_switch: app.on_tab_switch(*args)
+
+        # ============= プレイヤー =============
+        Tab:
+            title: "プレイヤー"
+            MDBoxLayout:
+                orientation: "vertical"
+                spacing: dp(8)
+
+                MDBoxLayout:
+                    adaptive_height: True
+                    MDTextField:
+                        id: money_delta
+                        hint_text: "所持金を増減（万円）"
+                        input_filter: "int"
+                        helper_text: "+で加算 / -で減算"
+                        helper_text_mode: "on_focus"
+                    MDRaisedButton:
+                        text: "反映"
+                        on_release: app.ui_add_money(money_delta.text)
+
+                MDBoxLayout:
+                    adaptive_height: True
+                    MDTextField:
+                        id: debt_delta
+                        hint_text: "借金を増減（万円）"
+                        input_filter: "int"
+                    MDRaisedButton:
+                        text: "反映"
+                        on_release: app.ui_add_debt(debt_delta.text)
+
+                MDBoxLayout:
+                    adaptive_height: True
+                    MDTextField:
+                        id: title_input
+                        hint_text: "称号（ランク）を追加"
+                    MDRaisedButton:
+                        text: "付与"
+                        on_release: app.ui_add_title(title_input.text)
+
+                MDBoxLayout:
+                    adaptive_height: True
+                    MDLabel:
+                        text: "人気度"
+                        size_hint_x: None
+                        width: dp(80)
+                    MDSlider:
+                        id: popularity_slider
+                        min: 0
+                        max: 100
+                        value: 50
+                        on_value_normalized: app.ui_set_popularity(int(self.value))
+                    MDLabel:
+                        id: popularity_label
+                        text: "50"
+
+                MDBoxLayout:
+                    adaptive_height: True
+                    MDLabel:
+                        text: "幸福度"
+                        size_hint_x: None
+                        width: dp(80)
+                    MDSlider:
+                        id: happiness_slider
+                        min: 0
+                        max: 100
+                        value: 50
+                        on_value_normalized: app.ui_set_happiness(int(self.value))
+                    MDLabel:
+                        id: happiness_label
+                        text: "50"
+
+                MDSeparator:
+                MDBoxLayout:
+                    adaptive_height: True
+                    MDTextField:
+                        id: give_to_player
+                        hint_text: "プレイヤー名（送金先）"
+                    MDTextField:
+                        id: give_amount
+                        hint_text: "送金額（万円）"
+                        input_filter: "int"
+                    MDRaisedButton:
+                        text: "送金"
+                        on_release: app.ui_transfer(give_to_player.text, give_amount.text)
+
+        # ============= 市場（出品/購入/ポイント） =============
+        Tab:
+            title: "市場"
+            MDBoxLayout:
+                orientation: "vertical"
+                spacing: dp(8)
+
+                MDTextField:
+                    id: market_item
+                    hint_text: "商品名"
+                MDTextField:
+                    id: market_price
+                    hint_text: "価格（万円）"
+                    input_filter: "int"
+                MDTextField:
+                    id: market_qty
+                    hint_text: "数量"
+                    input_filter: "int"
+
+                MDBoxLayout:
+                    adaptive_height: True
+                    MDRaisedButton:
+                        text: "出品する"
+                        on_release: app.market_list_item(market_item.text, market_price.text, market_qty.text)
+                    MDRaisedButton:
+                        text: "購入（選択 → スタンプ付与）"
+                        on_release: app.market_buy_selected()
+
+                MDBoxLayout:
+                    adaptive_height: True
+                    MDLabel:
+                        id: stamp_label
+                        text: "スタンプ: 0 / 10　満タンカード: 0"
+                MDBoxLayout:
+                    adaptive_height: True
+                    MDRaisedButton:
+                        text: "景品交換（満タンカード）"
+                        on_release: app.ui_exchange_fullcard()
+
+                ScrollView:
+                    MDList:
+                        id: market_list  # app で商品一覧を差し込む
+
+        # ============= 株式（通常） =============
+        Tab:
+            title: "株式"
+            MDBoxLayout:
+                orientation: "vertical"
+                spacing: dp(8)
+                MDTextField:
+                    id: stock_name
+                    hint_text: "銘柄名"
+                MDTextField:
+                    id: stock_qty
+                    hint_text: "数量"
+                    input_filter: "int"
+                MDBoxLayout:
+                    adaptive_height: True
+                    MDRaisedButton:
+                        text: "買う（手数料5% / 投資家0%）"
+                        on_release: app.stock_buy(stock_name.text, stock_qty.text)
+                    MDRaisedButton:
+                        text: "売る"
+                        on_release: app.stock_sell(stock_name.text, stock_qty.text)
+
+                MDSeparator:
+                MDBoxLayout:
+                    adaptive_height: True
+                    MDTextField:
+                        id: acquire_target
+                        hint_text: "企業名（買収）"
+                    MDTextField:
+                        id: acquire_bid
+                        hint_text: "買収額（万円）"
+                        input_filter: "int"
+                    MDRaisedButton:
+                        text: "買収する"
+                        on_release: app.acquire_company(acquire_target.text, acquire_bid.text)
+
+                ScrollView:
+                    MDList:
+                        id: holdings_list  # 保有株表示
+
+        # ============= 不動産 =============
+        Tab:
+            title: "不動産"
+            MDBoxLayout:
+                orientation: "vertical"
+                spacing: dp(8)
+
+                MDBoxLayout:
+                    adaptive_height: True
+                    MDTextField:
+                        id: prop_id
+                        hint_text: "物件ID / 名称"
+                    MDTextField:
+                        id: prop_price
+                        hint_text: "価格（万円）"
+                        input_filter: "int"
+                    MDRaisedButton:
+                        text: "購入"
+                        on_release: app.property_buy(prop_id.text, prop_price.text)
+                    MDRaisedButton:
+                        text: "売却"
+                        on_release: app.property_sell(prop_id.text)
+
+                ScrollView:
+                    MDList:
+                        id: property_list
+
+        # ============= 料理 =============
+        Tab:
+            title: "料理"
+            MDBoxLayout:
+                orientation: "vertical"
+                spacing: dp(8)
+
+                MDTextField:
+                    id: recipe_name
+                    hint_text: "レシピ名（例：おにぎり）"
+                MDRaisedButton:
+                    text: "作る（材料は所持品から）"
+                    on_release: app.cook_recipe(recipe_name.text)
+                ScrollView:
+                    MDList:
+                        id: recipe_log
+
+        # ============= コレクション =============
+        Tab:
+            title: "コレクション"
+            MDBoxLayout:
+                orientation: "vertical"
+                spacing: dp(8)
+
+                MDTextField:
+                    id: coll_cat
+                    hint_text: "カテゴリ（昆虫/魚/化石/カード）"
+                MDTextField:
+                    id: coll_item
+                    hint_text: "アイテム名"
+                MDRaisedButton:
+                    text: "追加する"
+                    on_release: app.add_collectible(coll_cat.text, coll_item.text)
+                ScrollView:
+                    MDList:
+                        id: collection_list
+
+        # ============= ペット =============
+        Tab:
+            title: "ペット"
+            MDBoxLayout:
+                orientation: "vertical"
+                spacing: dp(8)
+
+                MDTextField:
+                    id: pet_name
+                    hint_text: "ペット名（PETSから）"
+                MDRaisedButton:
+                    text: "購入（扶養控除に反映）"
+                    on_release: app.adopt_pet(pet_name.text)
+                ScrollView:
+                    MDList:
+                        id: pet_list
+
+        # ============= 交流/取引 =============
+        Tab:
+            title: "交流/取引"
+            MDBoxLayout:
+                orientation: "vertical"
+                spacing: dp(8)
+                MDTextField:
+                    id: trade_with
+                    hint_text: "相手プレイヤー"
+                MDTextField:
+                    id: trade_amount
+                    hint_text: "金額（万円）"
+                    input_filter: "int"
+                MDRaisedButton:
+                    text: "取引する（送金/物々交換）"
+                    on_release: app.trade_between_players(trade_with.text, trade_amount.text)
+                ScrollView:
+                    MDList:
+                        id: social_feed
+
+        # ============= カジノ =============
+        Tab:
+            title: "カジノ"
+            MDBoxLayout:
+                orientation: "vertical"
+                spacing: dp(8)
+                MDTextField:
+                    id: bet_amount
+                    hint_text: "ベット額（万円）"
+                    input_filter: "int"
+                MDRaisedButton:
+                    text: "プレイ（勝てば倍 / 負ければ没収）"
+                    on_release: app.play_casino(bet_amount.text)
+                ScrollView:
+                    MDList:
+                        id: casino_log
+
+        # ============= 犯罪 =============
+        Tab:
+            title: "犯罪"
+            MDBoxLayout:
+                orientation: "vertical"
+                spacing: dp(8)
+                MDTextField:
+                    id: crime_action
+                    hint_text: "行為（窃盗/詐欺/密輸…）"
+                MDRaisedButton:
+                    text: "実行（夜のみ・逮捕リスク）"
+                    on_release: app.commit_crime(crime_action.text)
+                MDRaisedButton:
+                    text: "自首（ランクを1段階下げる）"
+                    on_release: app.self_surrender()
+                ScrollView:
+                    MDList:
+                        id: crime_log
+
+        # ============= 禁断市場 =============
+        Tab:
+            title: "禁断市場"
+            MDBoxLayout:
+                orientation: "vertical"
+                spacing: dp(8)
+
+                MDBoxLayout:
+                    adaptive_height: True
+                    MDTextField:
+                        id: secret_code
+                        hint_text: "裏コード"
+                    MDRaisedButton:
+                        text: "解禁/管理"
+                        on_release: app.apply_secret_code(secret_code.text)
+
+                MDTextField:
+                    id: fstock_name
+                    hint_text: "禁断銘柄"
+                MDTextField:
+                    id: fstock_qty
+                    hint_text: "数量"
+                    input_filter: "int"
+                MDBoxLayout:
+                    adaptive_height: True
+                    MDRaisedButton:
+                        text: "買う"
+                        on_release: app.forbidden_buy(fstock_name.text, fstock_qty.text)
+                    MDRaisedButton:
+                        text: "売る"
+                        on_release: app.forbidden_sell(fstock_name.text, fstock_qty.text)
+
+                ScrollView:
+                    MDList:
+                        id: forbidden_log
+
+        # ============= 博物館 =============
+        Tab:
+            title: "博物館"
+            MDBoxLayout:
+                orientation: "vertical"
+                spacing: dp(8)
+                MDTextField:
+                    id: donate_item
+                    hint_text: "寄贈アイテム名"
+                MDRaisedButton:
+                    text: "寄贈する（名誉/人気アップ）"
+                    on_release: app.museum_donate(donate_item.text)
+                ScrollView:
+                    MDList:
+                        id: museum_list
+
+        # ============= イベント =============
+        Tab:
+            title: "イベント"
+            MDBoxLayout:
+                orientation: "vertical"
+                spacing: dp(8)
+                MDTextField:
+                    id: event_force
+                    hint_text: "イベントID / ニュースID"
+                MDRaisedButton:
+                    text: "強制発動"
+                    on_release: app.trigger_event(event_force.text)
+                ScrollView:
+                    MDList:
+                        id: event_log
+
+        # ============= 神モード（銀行員） =============
+        Tab:
+            title: "神モード"
+            MDBoxLayout:
+                orientation: "vertical"
+                spacing: dp(8)
+
+                MDBoxLayout:
+                    adaptive_height: True
+                    MDTextField:
+                        id: banker_name_input
+                        hint_text: "銀行員名"
+                    MDTextField:
+                        id: banker_password_input
+                        hint_text: "パスワード"
+                        password: True
+                    MDRaisedButton:
+                        text: "ログイン"
+                        on_release: app.banker_login(banker_name_input.text, banker_password_input.text)
+
+                MDSeparator:
+
+                MDBoxLayout:
+                    adaptive_height: True
+                    MDLabel:
+                        text: "国庫残高（±万円）"
+                        size_hint_x: None
+                        width: dp(160)
+                    MDTextField:
+                        id: treasury_delta
+                        input_filter: "int"
+                    MDRaisedButton:
+                        text: "反映"
+                        on_release: app.god_treasury_delta(treasury_delta.text)
+
+                MDBoxLayout:
+                    adaptive_height: True
+                    MDTextField:
+                        id: force_time
+                        hint_text: "時間（昼/夜）"
+                    MDTextField:
+                        id: force_season
+                        hint_text: "季節（春/夏/秋/冬）"
+                    MDRaisedButton:
+                        text: "変更"
+                        on_release: app.god_change_time_and_season(force_time.text, force_season.text)
+
+                MDBoxLayout:
+                    adaptive_height: True
+                    MDTextField:
+                        id: force_job_player
+                        hint_text: "対象プレイヤー"
+                    MDTextField:
+                        id: force_job_name
+                        hint_text: "職業名"
+                    MDRaisedButton:
+                        text: "職業を強制変更"
+                        on_release: app.god_force_job(force_job_player.text, force_job_name.text)
+
+                MDBoxLayout:
+                    adaptive_height: True
+                    MDTextField:
+                        id: prison_player
+                        hint_text: "投獄/釈放プレイヤー"
+                    MDRaisedButton:
+                        text: "投獄"
+                        on_release: app.god_imprison(prison_player.text)
+                    MDRaisedButton:
+                        text: "釈放"
+                        on_release: app.god_release(prison_player.text)
+
+                MDBoxLayout:
+                    adaptive_height: True
+                    MDRaisedButton:
+                        text: "一括バックアップ"
+                        on_release: app.quick_backup()
+                    MDRaisedButton:
+                        text: "最新から復元"
+                        on_release: app.restore_latest()
+                    MDRaisedButton:
+                        text: "ニュース強制（上のイベントID欄利用）"
+                        on_release: app.trigger_event(event_force.text)
+
+        # ============= 設定/初期化 =============
+        Tab:
+            title: "設定/初期化"
+            MDBoxLayout:
+                orientation: "vertical"
+                spacing: dp(8)
+
+                MDRaisedButton:
+                    text: "バックアップを書き出し"
+                    on_release: app.backup_export()
+                MDRaisedButton:
+                    text: "バックアップから読み込み"
+                    on_release: app.backup_import()
+                MDRaisedButton:
+                    text: "初期化（データ消去）"
+                    on_release: app.reset_all_data_confirm()
+
+        # ============= ログ =============
+        Tab:
+            title: "ログ"
+            MDBoxLayout:
+                orientation: "vertical"
+                spacing: dp(8)
+                ScrollView:
+                    MDList:
+                        id: game_log

@@ -5,13 +5,43 @@ from datetime import datetime
 import random
 import math
 
-from masters import (INITIAL_MONEY, SEASONS, DAY, NIGHT, INCOME_TAX_RATES,
-                    RESIDENCE_TAX, PROPERTY_TAX_RATE, TAX_PERIOD,
-                    TURN_SECONDS, SEASON_ADVANCE_EVERY, CRIME_THRESHOLDS,
-                    JOBS, QUALIFICATIONS, TRAITS, SKILLS, STOCKS,
-                    FORBIDDEN_STOCKS, FORBIDDEN_NEWS, NEWS_EVENTS,
-                    FURNITURE, PETS, RECIPES, PREFECTURES, CITIES, DISTRICTS,
-                    BUILDING_NAMES, CARD_REWARDS, SECRET_CODES, ROULETTE_TABLE)
+from masters import (
+    INITIAL_MONEY,
+    SEASONS,
+    DAY,
+    NIGHT,
+    INCOME_TAX_RATES,
+    RESIDENCE_TAX,
+    PROPERTY_TAX_RATE,
+    TAX_PERIOD,
+    TURN_SECONDS,
+    SEASON_ADVANCE_EVERY,
+    CRIME_THRESHOLDS,
+    JOBS,
+    QUALIFICATIONS,
+    TRAITS,
+    SKILLS,
+    STOCKS,
+    FORBIDDEN_STOCKS,
+    FORBIDDEN_NEWS,
+    NEWS_EVENTS,
+    FURNITURE,
+    PETS,
+    RECIPES,
+    PREFECTURES,
+    CITIES,
+    DISTRICTS,
+    BUILDING_NAMES,
+    CARD_REWARDS,
+    SECRET_CODES,
+    ROULETTE_TABLE,
+    STAMP_PER_PRICE,
+    STAMP_TARGET,
+    DEDUCTION_PER_DEPENDENT,
+    RENT_RATE,
+    NPCS,
+    COLLECTIBLES,
+)
 
 def now_iso():
     return datetime.now().isoformat(timespec="seconds")
@@ -396,54 +426,6 @@ class Game:
                 p["money"] += gain
                 self._log(st, f"{p['name']} は配当 {gain} 万円を受け取り")
 
-    # ---------- passives & fees ----------
-    def _apply_passives_and_fees(self, st):
-        for p in st["players"].values():
-            job = JOBS.get(p["job"], {})
-            # 職業収入
-            if "income_per_turn" in job.get("passives", {}):
-                inc = int(job["passives"]["income_per_turn"])
-                p["money"] += inc
-                self._log(st, f"{p['name']}（{p['job']}）毎ターン収入 +{inc} 万円")
-            # 資格維持費
-            fee_total = 0
-            for q in p.get("qualifications", []):
-                qd = QUALIFICATIONS.get(q, {})
-                fee_total += int(qd.get("maintenance", 0))
-            if fee_total:
-                p["money"] -= fee_total
-                self._log(st, f"{p['name']} 資格維持費 -{fee_total} 万円")
-
-    # ---------- taxes ----------
-    def _collect_taxes(self, st):
-        total_to_treasury = 0
-        for p in st["players"].values():
-            # 住民税
-            job = JOBS.get(p["job"], {})
-            residence_tax = 0 if job.get("passives", {}).get("residence_tax_free") else RESIDENCE_TAX
-            # 所得税（sales_since_tax を課税所得とみなす簡易）
-            taxable = max(0, int(p.get("sales_since_tax", 0)))
-            income_tax = 0
-            last_threshold = 0
-            for threshold, rate in sorted(INCOME_TAX_RATES.items()):
-                if taxable > threshold:
-                    income_tax = int(threshold * rate)  # 簡易：最大閾値に対する税
-                    last_threshold = threshold
-            if taxable > last_threshold:
-                income_tax = int(taxable * INCOME_TAX_RATES[max(INCOME_TAX_RATES.keys())])
-            # 固定資産税
-            prop_base = sum([int(x.get("price", 0)) for x in p.get("properties", [])])
-            property_tax = int(round(prop_base * PROPERTY_TAX_RATE))
-            total = residence_tax + income_tax + property_tax
-            if total:
-                p["money"] -= total
-                total_to_treasury += total
-                self._log(st, f"{p['name']} 納税 合計 -{total} 万円（住{residence_tax}・所{income_tax}・固{property_tax}）")
-                p["sales_since_tax"] = 0
-        st["treasury"] += total_to_treasury
-        if total_to_treasury:
-            self._log(st, f"国庫に +{total_to_treasury} 万円")
-
     # ---------- stocks trade ----------
     def trade_stock(self, player: str, name: str, shares: int, forbidden=False):
         st = self.ensure_initialized()
@@ -558,10 +540,7 @@ class Game:
         self.store.save(st)
         return msg
 
-from masters import (STAMP_PER_PRICE, STAMP_TARGET, DEDUCTION_PER_DEPENDENT, RENT_RATE,
-                    NPCS, COLLECTIBLES)
-
-def _ensure_catalog(self, st):
+    def _ensure_catalog(self, st):
         if "market" not in st:
             st["market"] = []  # {id, seller, name, price}
         if "property_catalog" not in st:
@@ -574,13 +553,15 @@ def _ensure_catalog(self, st):
                         b = random.choice(BUILDING_NAMES)
                         price = random.randint(30, 120)
                         st["property_catalog"].append({
-                            "id": idx, "name": f"{pf}{ct}{dt}・{b}",
-                            "price": price, "rent": int(price * RENT_RATE)
+                            "id": idx,
+                            "name": f"{pf}{ct}{dt}・{b}",
+                            "price": price,
+                            "rent": int(price * RENT_RATE),
                         })
                         idx += 1
 
-# ---------- market ----------
-def market_list(self, seller: str, item_name: str, price: int):
+    # ---------- market ----------
+    def market_list(self, seller: str, item_name: str, price: int):
         st = self.ensure_initialized()
         self._ensure_catalog(st)
         iid = (st["market"][-1]["id"] + 1) if st["market"] else 1
@@ -589,11 +570,12 @@ def market_list(self, seller: str, item_name: str, price: int):
         self.store.save(st)
         return iid
 
-def market_buy(self, buyer: str, item_id: int):
+    def market_buy(self, buyer: str, item_id: int):
         st = self.ensure_initialized()
         self._ensure_catalog(st)
         item = next((x for x in st["market"] if x["id"] == int(item_id)), None)
-        if not item: return False, "該当商品がありません"
+        if not item:
+            return False, "該当商品がありません"
         p_buyer = st["players"][buyer]
         if p_buyer["money"] < item["price"]:
             return False, "所持金不足"
@@ -617,11 +599,12 @@ def market_buy(self, buyer: str, item_id: int):
         self.store.save(st)
         return True, "購入完了"
 
-def exchange_card(self, player: str, reward_name: str) -> str:
+    def exchange_card(self, player: str, reward_name: str) -> str:
         st = self.ensure_initialized()
         p = st["players"][player]
         rw = next((r for r in CARD_REWARDS if r["name"] == reward_name), None)
-        if not rw: return "景品がありません"
+        if not rw:
+            return "景品がありません"
         if p["full_cards"] < rw["cost"]:
             return "カード不足"
         p["full_cards"] -= rw["cost"]
@@ -636,12 +619,13 @@ def exchange_card(self, player: str, reward_name: str) -> str:
         self.store.save(st)
         return "交換しました"
 
-# ---------- real estate ----------
-def buy_property(self, player: str, prop_id: int) -> str:
+    # ---------- real estate ----------
+    def buy_property(self, player: str, prop_id: int) -> str:
         st = self.ensure_initialized()
         self._ensure_catalog(st)
         pr = next((x for x in st["property_catalog"] if x["id"] == int(prop_id)), None)
-        if not pr: return "物件がありません"
+        if not pr:
+            return "物件がありません"
         p = st["players"][player]
         if p["money"] < pr["price"]:
             return "所持金不足"
@@ -651,14 +635,16 @@ def buy_property(self, player: str, prop_id: int) -> str:
         self.store.save(st)
         return "購入しました"
 
-# ---------- cooking ----------
-def cook(self, player: str, recipe_name: str) -> str:
+    # ---------- cooking ----------
+    def cook(self, player: str, recipe_name: str) -> str:
         st = self.ensure_initialized()
         rc = RECIPES.get(recipe_name)
-        if not rc: return "レシピがありません"
+        if not rc:
+            return "レシピがありません"
         cost = sum(rc["ingredients"].values())  # 1素材=1万円として簡易コスト
         p = st["players"][player]
-        if p["money"] < cost: return "所持金不足"
+        if p["money"] < cost:
+            return "所持金不足"
         p["money"] -= int(cost)
         # 効果：幸福度+材料数*2
         delta = min(100 - p["happiness"], len(rc["ingredients"]) * 2)
@@ -667,11 +653,12 @@ def cook(self, player: str, recipe_name: str) -> str:
         self.store.save(st)
         return f"美味しくできた！（幸福+{delta}）"
 
-# ---------- collection ----------
-def collect_random(self, player: str, category: str) -> str:
+    # ---------- collection ----------
+    def collect_random(self, player: str, category: str) -> str:
         st = self.ensure_initialized()
         pool = COLLECTIBLES.get(category, [])
-        if not pool: return "カテゴリがありません"
+        if not pool:
+            return "カテゴリがありません"
         item = random.choice(pool)
         p = st["players"][player]
         coll = p.setdefault("collection", {}).setdefault(category, [])
@@ -683,13 +670,15 @@ def collect_random(self, player: str, category: str) -> str:
         self.store.save(st)
         return f"『{item}』をコレクション！"
 
-# ---------- pets ----------
-def buy_pet(self, player: str, pet_name: str) -> str:
+    # ---------- pets ----------
+    def buy_pet(self, player: str, pet_name: str) -> str:
         st = self.ensure_initialized()
         pd = PETS.get(pet_name)
-        if not pd: return "ペットが見つかりません"
+        if not pd:
+            return "ペットが見つかりません"
         p = st["players"][player]
-        if p["money"] < pd["price"]: return "所持金不足"
+        if p["money"] < pd["price"]:
+            return "所持金不足"
         p["money"] -= int(pd["price"])
         p["pets"].append(pet_name)
         p["happiness"] = min(100, p["happiness"] + int(pd["happiness_boost"]))
@@ -697,31 +686,34 @@ def buy_pet(self, player: str, pet_name: str) -> str:
         self.store.save(st)
         return "購入しました"
 
-# ---------- npc ----------
-def npc_talk(self, player: str, npc_name: str) -> str:
+    # ---------- npc ----------
+    def npc_talk(self, player: str, npc_name: str) -> str:
         st = self.ensure_initialized()
-        st.setdefault("npcs", {k: dict(v) for k,v in NPCS.items()})
-        if npc_name not in st["npcs"]: return "NPCがいません"
+        st.setdefault("npcs", {k: dict(v) for k, v in NPCS.items()})
+        if npc_name not in st["npcs"]:
+            return "NPCがいません"
         st["npcs"][npc_name]["affinity"] += 1
         self._log(st, f"{player} が {npc_name} と交流（親交+1）")
         self.store.save(st)
         return "仲良くなった！"
 
-# ---------- generation (inherit) ----------
-def add_child(self, player: str, child_name: str, age: int):
+    # ---------- generation (inherit) ----------
+    def add_child(self, player: str, child_name: str, age: int):
         st = self.ensure_initialized()
         p = st["players"][player]
         p["children"].append({"name": child_name, "age": int(age)})
         self._log(st, f"{player} に子『{child_name}』が追加")
         self.store.save(st)
 
-def do_generation_inherit(self, player: str, ratios: List[int]):
+    def do_generation_inherit(self, player: str, ratios: List[int]):
         st = self.ensure_initialized()
         p = st["players"][player]
         kids = p.get("children", [])
-        if not kids: return "子どもがいません"
+        if not kids:
+            return "子どもがいません"
         s = sum(ratios) if ratios else 0
-        if s <= 0: return "配分が無効です"
+        if s <= 0:
+            return "配分が無効です"
         # 新プレイヤー作成
         for kid, r in zip(kids, ratios):
             share = int(p["money"] * (r / s))
@@ -738,8 +730,8 @@ def do_generation_inherit(self, player: str, ratios: List[int]):
         self.store.save(st)
         return "世代交代完了"
 
-# ---- override: apply passives extended with rent ----
-def _apply_passives_and_fees(self, st):
+    # ---- override: apply passives extended with rent ----
+    def _apply_passives_and_fees(self, st):
         for p in st["players"].values():
             job = JOBS.get(p["job"], {})
             # 職業収入
@@ -761,8 +753,8 @@ def _apply_passives_and_fees(self, st):
                 p["money"] -= fee_total
                 self._log(st, f"{p['name']} 資格維持費 -{fee_total} 万円")
 
-# ---- override: taxes add dependent deduction ----
-def _collect_taxes(self, st):
+    # ---- override: taxes add dependent deduction ----
+    def _collect_taxes(self, st):
         total_to_treasury = 0
         for p in st["players"].values():
             # 住民税
@@ -788,13 +780,16 @@ def _collect_taxes(self, st):
             if total:
                 p["money"] -= total
                 total_to_treasury += total
-                self._log(st, f"{p['name']} 納税 -{total}（住{residence_tax}・所{income_tax}・固{property_tax}・扶養控除{deduction}）")
+                self._log(
+                    st,
+                    f"{p['name']} 納税 -{total}（住{residence_tax}・所{income_tax}・固{property_tax}・扶養控除{deduction}）",
+                )
                 p["sales_since_tax"] = 0
         st["treasury"] += total_to_treasury
         if total_to_treasury:
             self._log(st, f"国庫に +{total_to_treasury} 万円")
-# ---------- inventory ----------
-def add_inventory(self, player: str, item: str, qty: int=1):
+    # ---------- inventory ----------
+    def add_inventory(self, player: str, item: str, qty: int = 1):
         st = self.ensure_initialized()
         p = st["players"][player]
         inv = p.setdefault("inventory", {})
@@ -802,32 +797,33 @@ def add_inventory(self, player: str, item: str, qty: int=1):
         self._log(st, f"{player} の在庫『{item}』+{qty}")
         self.store.save(st)
 
-def consume_inventory(self, player: str, needed: dict) -> bool:
+    def consume_inventory(self, player: str, needed: dict) -> bool:
         """必要材料を在庫から消費。足りなければFalse"""
         st = self.ensure_initialized()
         p = st["players"][player]
         inv = p.setdefault("inventory", {})
         # チェック
-        for k,v in needed.items():
+        for k, v in needed.items():
             if inv.get(k, 0) < int(v):
                 return False
         # 消費
-        for k,v in needed.items():
+        for k, v in needed.items():
             inv[k] -= int(v)
         self.store.save(st)
         return True
 
-def inventory_text(self, player: str) -> str:
+    def inventory_text(self, player: str) -> str:
         st = self.ensure_initialized()
         inv = st["players"][player].get("inventory", {})
-        if not inv: return "（在庫なし）"
-        return ", ".join([f"{k}×{v}" for k,v in inv.items() if v>0]) or "（在庫なし）"
+        if not inv:
+            return "（在庫なし）"
+        return ", ".join([f"{k}×{v}" for k, v in inv.items() if v > 0]) or "（在庫なし）"
 
-
-def npc_special_event(self, player: str, npc_name: str) -> str:
+    def npc_special_event(self, player: str, npc_name: str) -> str:
         st = self.ensure_initialized()
         from masters import NPC_EVENTS
-        st.setdefault("npcs", {k: dict(v) for k,v in NPCS.items()})
+
+        st.setdefault("npcs", {k: dict(v) for k, v in NPCS.items()})
         if npc_name not in st["npcs"]:
             return "NPCがいません"
         ev = NPC_EVENTS.get(npc_name)
@@ -842,12 +838,14 @@ def npc_special_event(self, player: str, npc_name: str) -> str:
             return "もう受け取り済みです"
         # 付与
         rwd = ev["reward"]
-        if "money" in rwd: p["money"] += int(rwd["money"])
-        if "popularity" in rwd: p["popularity"] = int(p.get("popularity",0)) + int(rwd["popularity"])
+        if "money" in rwd:
+            p["money"] += int(rwd["money"])
+        if "popularity" in rwd:
+            p["popularity"] = int(p.get("popularity", 0)) + int(rwd["popularity"])
         if "item" in rwd:
             name, q = rwd["item"]
             self.add_inventory(player, name, int(q))
         done.append(key)
         self._log(st, f"{player} が {npc_name} イベント報酬を獲得")
         self.store.save(st)
-        return ev.get("text","報酬GET")
+        return ev.get("text", "報酬GET")

@@ -149,6 +149,7 @@ JAPANESE_LARGE_UNITS = [
     (10**4, "万 (まん)"),
 ]
 
+
 def format_money_manjp(value: int) -> str:
     """万円単位の整数を日本語大数で整形。"""
     n = int(value)

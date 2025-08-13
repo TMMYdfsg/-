@@ -14,16 +14,35 @@ class StateStore:
         self.state_path = self.dir / "state.json"
         self.backup_dir = self.dir / "backups"
         self.backup_dir.mkdir(parents=True, exist_ok=True)
+        # cache loaded state to avoid repeated disk reads
+        self._state: Dict[str, Any] | None = None
 
     def load(self) -> Dict[str, Any]:
-        if self.state_path.exists():
-            return json.loads(self.state_path.read_text(encoding="utf-8"))
-        return {}
+        if self._state is None:
+            if self.state_path.exists():
+                self._state = json.loads(
+                    self.state_path.read_text(encoding="utf-8")
+                )
+            else:
+                self._state = {}
+        return self._state
 
     def save(self, st: Dict[str, Any]):
+        self._state = st
         tmp = self.dir / "state.tmp"
-        tmp.write_text(json.dumps(st, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp.write_text(
+            json.dumps(st, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
         tmp.replace(self.state_path)
+
+    # Convenience wrappers used throughout the project
+    def get_state(self) -> Dict[str, Any]:
+        """Return current state, loading from disk if necessary."""
+        return self.load()
+
+    def update_state(self, st: Dict[str, Any]):
+        """Persist given state to disk."""
+        self.save(st)
 
     def backup(self) -> str:
         if not self.state_path.exists():
